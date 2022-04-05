@@ -2,16 +2,19 @@
 #include <iostream>
 #include <istream>
 #include <sstream>
+
+#include <stdexcept>
 #include <optional>
 
 std::optional<int> convert(const std::string &str)
- {
+{
   if (0 == str.size()) { return std::nullopt; }
 
-  auto positive{true};
   size_t startIdx{0};
   while (startIdx < str.size() && ' ' == str[startIdx]) { ++startIdx; }
-  
+  if (startIdx == str.size()) { return std::nullopt; }
+
+  auto positive{true};
   if ('-' == str[startIdx])
   {
     if (startIdx + 1 == str.size()) { return std::nullopt; }
@@ -22,10 +25,9 @@ std::optional<int> convert(const std::string &str)
   if ('+' == str[startIdx])
   {
     if (startIdx + 1 == str.size()) { return std::nullopt; }
-    positive = true;
     ++startIdx;
   }
-  
+
   auto ret{0};
   for (size_t i = startIdx; i < str.size(); ++i)
   {
@@ -50,25 +52,29 @@ public:
   public:
     iterator(int* ptr) { m_ptr = ptr; }
 
-    int operator*() const { return *m_ptr; }
- 
+    int operator*() const
+    {
+      if (nullptr == m_ptr) { throw std::runtime_error("error"); }
+      return *m_ptr;
+    }
+
     iterator& operator++()
     {
       ++m_ptr;
       return *this;
     }
- 
+
     iterator operator++(int)
     {
       iterator tmp = *this;
       ++(*this);
       return tmp;
     }
- 
+
     friend bool operator != (const iterator& a, const iterator& b) { return a.m_ptr != b.m_ptr; }
 
   private:
-    int * m_ptr;
+    int* m_ptr;
   };
 
   Solution(std::istream &stream)
@@ -80,7 +86,7 @@ public:
       if (std::nullopt != ret) { m_data.push_back(*ret); }
     }
   }
-  
+
   iterator begin() { return 0 == m_data.size() ? nullptr : iterator(&m_data[0]); }
   iterator end() { return 0 == m_data.size() ? nullptr : iterator(&m_data[m_data.size() - 1] + 1); }
 
@@ -105,7 +111,7 @@ int main()
     std::cout << "ret " << *ret << " val " << val << std::endl;
     ret = convert("1 098");
     std::cout << "ret " << *ret << " val " << val << std::endl;
-    
+
     //std::vector<std::string> v1 { "98", "098", "-398", "-0398", "3213", "1 098", "1000000000", "1000000001", "999999999", "+1", " -1" };
 
     std::stringstream s1("98\n098\n-398\n-0398\n3123\n1 098\n1000000000\n1000000001\n999999999");
@@ -116,9 +122,9 @@ int main()
     std::cout << "it result:" << std::endl;
     while (it != s.end()) {
         std::cout << *it << std::endl;
-        it ++;
+        ++it;
     }
-    
+
     return 0;
 }
 
