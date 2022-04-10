@@ -7,23 +7,23 @@
 
 using namespace std;
 
-const auto CELL_SIZE{30000};
-unordered_set<char> collect{'+', '-', '>', '<', '.', '[', ']'};
+const auto MEM_SIZE{30000};
+unordered_set<char> keywords{'+', '-', '>', '<', '.', '[', ']'};
 
-bool build_hash(string& code,
-                unordered_map<int, int>& forward_hash,
-                unordered_map<int, int>& backward_hash)
+bool prepareJumpTable(string_view program,
+                      unordered_map<int, int>& forward,
+                      unordered_map<int, int>& backward)
 {
   stack<int> s;
-  for (size_t i{0}; i < code.size(); ++i)
+  for (size_t i{0}; i < program.size(); ++i)
   {
-    auto ch{code[i]};
+    auto ch{program[i]};
     if (ch == '[') { s.push(i); }
     if (ch == ']')
     {
       if (s.empty()) { return false; }
-      forward_hash[s.top()] = i;
-      backward_hash[i] = s.top();
+      forward[s.top()] = i;
+      backward[i] = s.top();
       s.pop();
     }
   }
@@ -37,72 +37,84 @@ bool isWhiteSpace(char ch)
   return false;
 }
 
-void fun(string& code)
+void interpreter(string_view program)
 {
-  vector<int> cell(CELL_SIZE, 0);
-  auto data_ptr{0};
+  vector<char> memory(MEM_SIZE, 0);
+  auto dp{0};
 
-  unordered_map<int, int> forward_hash;
-  unordered_map<int, int> backward_hash;
-  if (false == build_hash(code, forward_hash, backward_hash))
+  unordered_map<int, int> forward;
+  unordered_map<int, int> backward;
+  if (false == prepareJumpTable(program, forward, backward))
   {
     cout << "ERROR: unmatched []" << endl;
     return;
   }
 
-  size_t i{0};
-  while (i < code.size())
+  size_t ip{0};
+  while (ip < program.size())
   {
-    char ch{code[i]};
-    if (isWhiteSpace(ch)) { ++i; continue; }
-    if (0 == collect.count(ch))
+    char ch{program[ip]};
+    if (isWhiteSpace(ch)) { ++ip; continue; }
+    if (0 == keywords.count(ch))
     {
-      cout << "ERROR: invalid char" << endl;
+      cout << "ERROR: invalid program" << endl;
       return;
     }
     switch (ch)
     {
       case '+':
-        ++cell[data_ptr];
+        ++memory[dp];
         break;
       case '-':
-        --cell[data_ptr];
+        --memory[dp];
         break;
       case '<':
-        --data_ptr;
-        if (data_ptr < 0)
+        --dp;
+        if (dp < 0)
         {
           cout << "ERROR: underflow" << endl;
           return;
         }
         break;
       case '>':
-        ++data_ptr;
-        if (data_ptr >= CELL_SIZE)
+        ++dp;
+        if (dp >= MEM_SIZE)
         {
           cout << "ERROR: overflow" << endl;
           return;
         }
         break;
       case '.':
-        cout << cell[data_ptr];
+        cout << memory[dp];
         break;
       case '[':
-        if (cell[data_ptr] == 0) { i = forward_hash[i]; }
+        if (memory[dp] == 0) { ip = forward[ip]; }
         break;
       case ']':
-        if (cell[data_ptr]) { i = backward_hash[i]; }
+        if (memory[dp]) { ip = backward[ip]; }
+        break;
+      case ',':
+        // not support input file
         break;
       default:
         break;
     }
-    ++i;
+    ++ip;
   }
   cout << endl;
 }
 
 int main() {
-  string program{"+++++   >+++ [<+.>-]"}; // output 678
-  fun(program);
+  string_view helloWorld{"++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."}; // output Hello World
+  interpreter(helloWorld);
+
+  string_view triangle{
+    "++++++++[>+>++++<<-]>++>>+<[-[>>+<<-]+>>]>+["
+      "-<<<["
+        "->[+[-]+>++>>>-<<]<[<]>>++++++[<<+++++>>-]+<<++.[-]<<"
+      "]>.>+[>>]>+"
+    "]"};  // output Sierpinski triangle
+  interpreter(triangle);
+
   return 0;
 }
