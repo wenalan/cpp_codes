@@ -11,15 +11,16 @@ using namespace std;
 /******
  * quick reference:
  *
- * val = top()
+ * val = front()
+ * val = back()
  * push(val)
  * pop()
  */
 void typical_usage() {
-  stack<int> stk;       // after c23, can construct from iterator
-  stk.push(42);
-  auto val = stk.top(); // return ref to the top element
-  stk.pop();            // destroy the top element
+  queue<int> q;         // after c23, can construct from iterator
+  q.push(42);
+  auto val = q.front(); // return ref to the front element
+  q.pop();              // destroy the front element
   cout << val << endl;  // safe, as val is a copy of int
 }
 
@@ -28,8 +29,8 @@ void typical_usage() {
  * initialization
  */
 void init_example() {
-  stack<int> s{{1, 2}}; // equal to stack<int> s{deque<int>{1, 2}};
-  s = {};               // clear all, as no clear() method
+  queue<int> q{{1, 2}}; // equal to queue<int> q{deque<int>{1, 2}};
+  q = {};               // clear all, as no clear() method
 }
 
 
@@ -41,8 +42,8 @@ struct obj {
 };
 
 void emplace_example() {
-  stack<obj> s;
-  auto ref = s.emplace(42); // return ref after c17
+  queue<obj> q;
+  auto ref = q.emplace(42); // return ref after c17
   cout << ref.x << endl;
 }
 

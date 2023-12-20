@@ -1,0 +1,1 @@
+clear && g++ -g --std=c++23 -fsanitize=address $1 && ./a.out
