@@ -1,0 +1,4 @@
+clear
+g++ -g -std=c++23 -fsanitize=address $1 -static-libasan
+#ASAN_OPTIONS="help=1:debug=1"
+ASAN_OPTIONS="abort_on_error=1:check_initialization_order=1:strict_init_order=1:detect_stack_use_after_return=1" ./a.out

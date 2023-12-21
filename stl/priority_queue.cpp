@@ -9,7 +9,7 @@ using namespace std;
 
 
 /******
- * for leetcode:
+ * quick reference:
  *
  * val = top()        // not front(), as there is no back() method
  * push(val)
