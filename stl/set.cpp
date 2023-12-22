@@ -133,12 +133,13 @@ void insert_example() {
 /******
  * standard algorithm
  */
-void print_and_clear(vector<int>& v) {
-  for (auto i : v) {
-    cout << i << " ";
+template <typename OS, typename T>
+OS& operator<<(OS& os, const vector<T>& v) {
+  auto sep = false;
+  for (const auto& e : v) {
+    os << (sep ? ", " : (sep=true, "")) << e;
   }
-  cout << endl;
-  v.clear();
+  return os;
 }
 
 void algorithm_example() {
@@ -153,31 +154,36 @@ void algorithm_example() {
   set_intersection(v1.begin(), v1.end(),
                    v2.begin(), v2.end(),
                    back_inserter(v3));
-  print_and_clear(v3);
+  cout << v3 << endl;
+  v3.clear();
 
   // result is {1, 2, 4, 5}
   set_symmetric_difference(v1.begin(), v1.end(),
                            v2.begin(), v2.end(),
                            back_inserter(v3));
-  print_and_clear(v3);
+  cout << v3 << endl;
+  v3.clear();
 
   // result is {1, 2}, sth like v1 - v2
   set_difference(v1.begin(), v1.end(),
                  v2.begin(), v2.end(),
                  back_inserter(v3));
-  print_and_clear(v3);
+  cout << v3 << endl;
+  v3.clear();
 
   // result is {1, 2, 3, 4, 5}, no duplicated items
   set_union(v1.begin(), v1.end(),
             v2.begin(), v2.end(),
             back_inserter(v3));
-  print_and_clear(v3);
+  cout << v3 << endl;
+  v3.clear();
 
   // result is {1, 2, 3, 3, 4, 5}, contains duplicated items
   merge(v1.begin(), v1.end(),
         v2.begin(), v2.end(),
         back_inserter(v3));
-  print_and_clear(v3);
+  cout << v3 << endl;
+  v3.clear();
 }
 
 
