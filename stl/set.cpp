@@ -134,7 +134,7 @@ void insert_example() {
  * standard algorithm
  */
 template <typename OS, typename T>
-OS& operator<<(OS& os, const vector<T>& v) {
+OS& operator<<(OS& os, const T& v) {
   auto sep = false;
   for (const auto& e : v) {
     os << (sep ? ", " : (sep=true, "")) << e;
