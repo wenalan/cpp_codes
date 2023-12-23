@@ -39,7 +39,6 @@ using namespace std;
  * [it>] = upper_bound(key)
  */
 void typical_usage() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   map<int, int> mp;
@@ -54,7 +53,6 @@ void typical_usage() {
  * initialization
  */
 void init_example() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   // init from initilizer list
@@ -106,7 +104,6 @@ void init_example() {
  */
 // by lambda
 void pair_in_unordered_map_lambda() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   auto pair_hash = [](const std::pair<int, int> &p) {
@@ -125,7 +122,6 @@ struct pair_hash {
 };
 
 void pair_in_unordered_map_function_object() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
 	// it is possible to assign different algorithms for different maps
@@ -141,7 +137,6 @@ struct std::hash<pair<int,int>> {
 };
 
 void pair_in_unordered_map_global() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   // all maps use the same hash algorithm
@@ -165,7 +160,6 @@ struct obj {
 };
 
 void emplace_hint_example() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   map<obj, int> mp{{1, 2}, {5, 9}};
@@ -181,7 +175,6 @@ void emplace_hint_example() {
  * try emplace example
  */
 void try_emplace_example() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   map<obj, int> mp{{1, 2}, {5, 9}};
@@ -199,7 +192,6 @@ void try_emplace_example() {
  * with lambda comparation
  */
 void insert_example() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   struct obj {
@@ -246,7 +238,6 @@ struct payload {
 };
 
 void test_temporary_object_creation() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   map<int, payload> mp;
@@ -317,7 +308,6 @@ void test_temporary_object_creation() {
  * erase while looping
  */
 void erase_while_looping() {
-  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   map<int, int> mp1{{1, 2}, {3, 4}, {8, 10}};
