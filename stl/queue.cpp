@@ -11,8 +11,8 @@ using namespace std;
 /******
  * quick reference:
  *
- * val = front()
- * val = back()
+ * ref = front()
+ * ref = back()
  * push(val)
  * pop()
  */

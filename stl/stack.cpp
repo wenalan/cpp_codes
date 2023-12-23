@@ -11,7 +11,7 @@ using namespace std;
 /******
  * quick reference:
  *
- * val = top()
+ * ref = top()
  * push(val)
  * pop()
  */

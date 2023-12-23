@@ -3,9 +3,25 @@ using namespace std;
 
 
 /******
+ * todo: how copy / move assignment was written
+ */
+
+/******
  * quick reference:
  *
- * push_back()
+ * push_back(val)
+ * clear()
+ *
+ * ref = front()
+ * ref = back()
+ *
+ * insert(it, val)
+ * insert(it, count, val)
+ * insert(it, {})
+ * insert(it, first_it, last_it)
+ * 
+ * emplace(it, args...)
+ * emplace_back(args...)
  *
  * erase(it)
  * erase(first_it, last_it)
@@ -18,6 +34,8 @@ void typical_usage() {
   auto val = v.front(); // return ref to the front element
   v.pop_back();              // destroy the front element
   cout << val << " " << v.size() << endl;  // safe, as val is a copy of int
+
+  v.clear();
 }
 
 

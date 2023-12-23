@@ -11,7 +11,7 @@ using namespace std;
 /******
  * quick reference:
  *
- * val = top()        // not front(), as there is no back() method
+ * ref = top()        // not front(), as there is no back() method
  * push(val)
  * pop()
  */
