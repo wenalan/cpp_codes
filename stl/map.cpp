@@ -39,6 +39,7 @@ using namespace std;
  * [it>] = upper_bound(key)
  */
 void typical_usage() {
+  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   map<int, int> mp;
@@ -53,6 +54,7 @@ void typical_usage() {
  * initialization
  */
 void init_example() {
+  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   // init from initilizer list
@@ -66,7 +68,7 @@ void init_example() {
   vector<pair<int, int>> vec{{1, 2}, {3, 4}};
   map<int, int, greater<>> mp3{ vec.begin(), vec.end() };
 
-  mp3.insert({{5, 6}, {7, 8}});  // add elements 1, 10, 12
+  mp3.insert({{5, 6}, {7, 8}});
   cout << mp3.size() << endl;
 
   cout << mp1.size() << endl;
@@ -104,24 +106,26 @@ void init_example() {
  */
 // by lambda
 void pair_in_unordered_map_lambda() {
+  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
-	auto pair_hash = [](const std::pair<int, int> &p) {
-			return ((size_t)p.first << 32) | p.second;
-	};
+  auto pair_hash = [](const std::pair<int, int> &p) {
+    return ((size_t)p.first << 32) | p.second;
+  };
 
-	// it is possible to assign different algorithms for different maps
-	unordered_map<pair<int, int>, int, decltype(pair_hash)> visited_map;
+  // it is possible to assign different algorithms for different maps
+  unordered_map<pair<int, int>, int, decltype(pair_hash)> visited_map;
 }
 
 // by function object
 struct pair_hash {
-    std::size_t operator()(const std::pair<int, int> &p) const {
-        return ((size_t)p.first << 32) | p.second;
-    }
+  std::size_t operator()(const std::pair<int, int> &p) const {
+    return ((size_t)p.first << 32) | p.second;
+  }
 };
 
 void pair_in_unordered_map_function_object() {
+  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
 	// it is possible to assign different algorithms for different maps
@@ -137,42 +141,65 @@ struct std::hash<pair<int,int>> {
 };
 
 void pair_in_unordered_map_global() {
+  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   // all maps use the same hash algorithm
   unordered_map<pair<int, int>, int> visited_map;
 }
 
+
 /******
  * emplace hint example
  * with friend operator <
  */
 struct obj {
-  obj(int a) : x(a) {} // non-explicit, to support initialization below
   int x;
 
-  // operator < is required for set
+  obj(int a) : x(a) {} // non-explicit, to support initialization below
+
+  // operator < is required for map
   friend bool operator<(const obj& a, const obj& b) {
     return a.x < b.x;
   }
 };
 
 void emplace_hint_example() {
+  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
-  set<obj> s{2, 5, 9};
+  map<obj, int> mp{{1, 2}, {5, 9}};
   // element should be inserted right before or after the hint
   // or exactly equal to the hint position
   // otherwise, it fall back to the normal emplace
-  auto it = s.emplace_hint(s.begin(), 3); // emplace with hint
-  it = s.emplace_hint(s.begin(), 7); // fall back to normal emplace
+  auto it = mp.emplace_hint(mp.begin(), 3, 4); // emplace with hint
+  it = mp.emplace_hint(mp.begin(), obj{7}, 4); // fall back to normal emplace
 }
+
+
+/******
+ * try emplace example
+ */
+void try_emplace_example() {
+  cout << endl << "***************" << endl;
+  cout << __func__ << endl;
+
+  map<obj, int> mp{{1, 2}, {5, 9}};
+  auto [inserted_it, inserted] = mp.try_emplace(10, 11);
+  // element should be inserted right before or after the hint
+  // or exactly equal to the hint position
+  // otherwise, it fall back to the normal emplace
+  auto it = mp.try_emplace(mp.begin(), 3, 4); // emplace with hint
+  it = mp.try_emplace(mp.begin(), 7, 4); // fall back to normal emplace
+}
+
 
 /******
  * insert hint example
  * with lambda comparation
  */
 void insert_example() {
+  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   struct obj {
@@ -183,18 +210,114 @@ void insert_example() {
     return a.x < b.x;
   };
 
-  set<obj, decltype(cmp)> s{obj{2}, obj{5}, obj{9}};
+  map<obj, int, decltype(cmp)> mp{{obj{2}, 8}, {obj{5}, 3}, {obj{9}, 6}};
   // element should be inserted right before or after the position
   // or exactly equal to the position
   // otherwise, it fall back to the normal insertion
-  auto it = s.insert(s.begin(), obj{3}); // inserted with hint
-  it = s.insert(s.begin(), obj{7}); // fall back to normal insertion
+  auto it = mp.insert(mp.begin(), {obj{3}, 10}); // inserted with hint
+  it = mp.insert(mp.begin(), {obj{7}, 2}); // fall back to normal insertion
+}
+
+
+/******
+ * test for temporary object creation
+ */
+struct payload {
+  static inline bool trace{false};
+  int x;
+
+  payload(int a) : x(a) { // non-explicit, to support initialization below
+    if (!trace) return;
+    cout << "constructor" << endl;
+  }
+
+  payload(const payload& other) : x(other.x) {
+    cout << "copy constructor" << endl;
+  }
+
+  payload(payload&& other) noexcept : x(std::exchange(other.x, 0)) {
+    cout << "move constructor" << endl;
+  }
+
+  ~payload() {
+    if (!trace) return;
+    cout << "destructor" << endl;
+  }
+};
+
+void test_temporary_object_creation() {
+  cout << endl << "***************" << endl;
+  cout << __func__ << endl;
+
+  map<int, payload> mp;
+
+  payload::trace = true;
+  // for emplace method
+  // always construct the payload object
+  // if the key is duplicated, the payload object is destroyed immediately
+  cout << "emplace new element" << endl;
+  auto [inserted_it, inserted] = mp.emplace(1, 3);
+  cout << inserted_it->first << " " << inserted_it->second.x << " " << inserted << endl;
+
+  cout << "emplace dup element" << endl;
+  auto [inserted_it1, inserted1] = mp.emplace(1, 31);
+  cout << inserted_it1->first << " " << inserted_it1->second.x << " " << inserted1 << endl;
+
+  cout << "emplace_hint new element" << endl;
+  auto inserted_it2 = mp.emplace_hint(mp.begin(), 2, 4);
+  cout << inserted_it2->first << " " << inserted_it2->second.x << endl;
+
+  cout << "emplace_hint dup element" << endl;
+  auto inserted_it3 = mp.emplace_hint(mp.begin(), 2, 41);
+  cout << inserted_it3->first << " " << inserted_it3->second.x << endl;
+
+  // for try_emplace method
+  // does not construct the payload object if key is duplicated
+  // however, the key object is always constructed
+  cout << "try_emplace new element" << endl;
+  auto [inserted_it4, inserted4] = mp.try_emplace(3, 5);
+  cout << inserted_it4->first << " " << inserted_it4->second.x << " " << inserted4 << endl;
+
+  cout << "try_emplace dup element" << endl;
+  auto [inserted_it5, inserted5] = mp.try_emplace(3, 51);
+  cout << inserted_it5->first << " " << inserted_it5->second.x << " " << inserted5 << endl;
+
+  cout << "try_emplace new element with hint" << endl;
+  auto inserted_it6 = mp.try_emplace(mp.begin(), 4, 7);
+  cout << inserted_it6->first << " " << inserted_it6->second.x << endl;
+
+  cout << "try_emplace dup element with hint" << endl;
+  auto inserted_it7 = mp.try_emplace(mp.begin(), 4, 71);
+  cout << inserted_it7->first << " " << inserted_it7->second.x << endl;
+
+  // for insert method
+  // a temproray payload object is always constructed
+  // if no dup key, the object is copied / moved into map, and destroy the temproray object
+  // if the key is dup, the temproray object is destroyed immediately
+  cout << "insert new element" << endl;
+  auto [inserted_it8, inserted8] = mp.insert({5, 2});
+  cout << inserted_it8->first << " " << inserted_it8->second.x << " " << inserted8 << endl;
+
+  cout << "insert dup element" << endl;
+  auto [inserted_it9, inserted9] = mp.insert({5, 21});
+  cout << inserted_it9->first << " " << inserted_it9->second.x << " " << inserted9 << endl;
+
+  cout << "insert new element with hint" << endl;
+  auto inserted_it10 = mp.insert(mp.begin(), {6, 2});
+  cout << inserted_it10->first << " " << inserted_it10->second.x << endl;
+
+  cout << "insert dup element with hint" << endl;
+  auto inserted_it11 = mp.insert(mp.begin(), {6, 21});
+  cout << inserted_it11->first << " " << inserted_it11->second.x << endl;
+
+  payload::trace = false;
 }
 
 /******
  * erase while looping
  */
 void erase_while_looping() {
+  cout << endl << "***************" << endl;
   cout << __func__ << endl;
 
   map<int, int> mp1{{1, 2}, {3, 4}, {8, 10}};
@@ -220,7 +343,9 @@ int main() {
   pair_in_unordered_map_function_object();
   pair_in_unordered_map_global();
   emplace_hint_example();
+  try_emplace_example();
   insert_example();
+  test_temporary_object_creation();
   erase_while_looping();
   return 0;
 }
