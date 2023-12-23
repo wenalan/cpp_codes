@@ -16,6 +16,8 @@ using namespace std;
  * pop()
  */
 void typical_usage() {
+  cout << __func__ << endl;
+
   // by default, use less<>, largest element on top
   priority_queue<int> max_q; // after c23, can construct from iterator
 
@@ -32,6 +34,8 @@ void typical_usage() {
  * initialization
  */
 void init_example() {
+  cout << __func__ << endl;
+
   // init by initializer list
   // use less<>, but largest element on top
   priority_queue<int> q1{less<int>(), {1, 2}}; // {1, 2} to vector
@@ -44,7 +48,7 @@ void init_example() {
 
   // init by vector iterator
   vector<pair<int, int>> v{{6, 3}, {7, 5}, {1, 8}, {6,5}};
-  priority_queue<pair<int, int>, vector<pair<int, int>>, less<>> 
+  priority_queue<pair<int, int>, vector<pair<int, int>>, less<>>
 	  						q3{v.begin(), v.end()};
 
   // use tuple as element type
@@ -67,15 +71,17 @@ void init_example() {
  * customized comparation by lambda - preferred method
  */
 void order_by_lambda() {
+  cout << __func__ << endl;
+
   auto myComp = [](auto const& a, auto const& b) {
     // sort second in desending order, then first in ascending order
     // the result of priority queue is reversed
     if (a.second == b.second) return a.first < b.first;
-    return a.second > b.second;  
+    return a.second > b.second;
   };
 
   vector<pair<int, int>> v{{6, 3}, {7, 5}, {1, 8}, {6,5}};
-  priority_queue<pair<int, int>, vector<pair<int, int>>, decltype(myComp)> 
+  priority_queue<pair<int, int>, vector<pair<int, int>>, decltype(myComp)>
 	  						q{v.begin(), v.end()};
 }
 
@@ -89,13 +95,15 @@ struct myComp2 {
     // sort second in desending order, then first in ascending order
     // the result of priority queue is reversed
     if (a.second == b.second) return a.first < b.first;
-    return a.second > b.second;  
+    return a.second > b.second;
   }
 };
 
 void order_by_function_object() {
+  cout << __func__ << endl;
+
   vector<pair<int, int>> v{{6, 3}, {7, 5}, {1, 8}, {6,5}};
-  priority_queue<pair<int, int>, vector<pair<int, int>>, myComp2> 
+  priority_queue<pair<int, int>, vector<pair<int, int>>, myComp2>
 	  						q{v.begin(), v.end()};
 }
 
@@ -115,6 +123,8 @@ struct obj {
 };
 
 void order_by_user_defined_object() {
+  cout << __func__ << endl;
+
   priority_queue<obj> q;
   q.emplace(42);               // return void, even in c23
   cout << q.top().x << endl;

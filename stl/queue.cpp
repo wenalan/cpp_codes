@@ -17,6 +17,8 @@ using namespace std;
  * pop()
  */
 void typical_usage() {
+  cout << __func__ << endl;
+
   queue<int> q;         // after c23, can construct from iterator
   q.push(42);
   auto val = q.front(); // return ref to the front element
@@ -29,6 +31,8 @@ void typical_usage() {
  * initialization
  */
 void init_example() {
+  cout << __func__ << endl;
+
   queue<int> q{{1, 2}}; // equal to queue<int> q{deque<int>{1, 2}};
   q = {};               // clear all, as no clear() method
 }
@@ -42,6 +46,8 @@ struct obj {
 };
 
 void emplace_example() {
+  cout << __func__ << endl;
+
   queue<obj> q;
   auto ref = q.emplace(42); // return ref after c17
   cout << ref.x << endl;

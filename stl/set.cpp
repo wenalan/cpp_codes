@@ -7,13 +7,17 @@ using namespace std;
  *
  * [it, inserted] = insert(val)
  * n_removed = erase(val)  // after c23, support heterogeneous lookup
- * n = count()
+ * n = count(val)          // after c14, support heterogeneous lookup
  * clear()
  *
  * bool contains(val)      // after c20, support heterogeneous lookup
  * it_after = erase(it)
- * [it, inserted] = emplace(...)
- * it = emplace_hint(hint, ...)
+ *
+ * it = insert(it_hint, val)
+ *
+ * // constructed obj destroyed immediately if dup
+ * [it, inserted] = emplace(val...)
+ * it = emplace_hint(it_hint, val...)
  *
  * merge(src_set) // merge src_set into current set
  *                // valid elements are removed from src_set
@@ -24,6 +28,8 @@ using namespace std;
  * [it>] = upper_bound(val)
  */
 void typical_usage() {
+  cout << __func__ << endl;
+
   set<int> st;
   auto [it, inserted] = st.insert(42);
   cout << *it << " " << inserted << endl;
@@ -37,7 +43,7 @@ void typical_usage() {
  * initialization
  */
 void init_example() {
-  cout << "init_example" << endl;
+  cout << __func__ << endl;
 
   // init from initilizer list
   set<int> st1{1, 2, 3};
@@ -63,13 +69,14 @@ void init_example() {
  */
 // by lambda
 void pair_in_unordered_set_lambda() {
+  cout << __func__ << endl;
+
 	auto pair_hash = [](const std::pair<int, int> &p) {
 			return ((size_t)p.first << 32) | p.second;
 	};
 
 	// it is possible to assign different algorithms for different sets
 	unordered_set<pair<int, int>, decltype(pair_hash)> visited_set;
-	unordered_map<pair<int, int>, int, decltype(pair_hash)> visited_map;
 }
 
 // by function object
@@ -80,9 +87,10 @@ struct pair_hash {
 };
 
 void pair_in_unordered_set_function_object() {
+  cout << __func__ << endl;
+
 	// it is possible to assign different algorithms for different sets
   unordered_set<pair<int, int>, pair_hash> visited_set;
-  unordered_map<pair<int, int>, int, pair_hash> visited_map;
 }
 
 // by global template class specialization
@@ -94,13 +102,15 @@ struct std::hash<pair<int,int>> {
 };
 
 void pair_in_unordered_set_global() {
+  cout << __func__ << endl;
+
   // all sets use the same hash algorithm
   unordered_set<pair<int, int>> visited_set;
-  unordered_map<pair<int, int>, int> visited_map;
 }
 
 /******
- * hint example
+ * emplace hint example
+ * with friend operator <
  */
 struct obj {
   obj(int a) : x(a) {} // non-explicit, to support initialization below
@@ -113,6 +123,8 @@ struct obj {
 };
 
 void emplace_hint_example() {
+  cout << __func__ << endl;
+
   set<obj> s{2, 5, 9};
   // element should be inserted right before or after the hint
   // or exactly equal to the hint position
@@ -121,13 +133,30 @@ void emplace_hint_example() {
   it = s.emplace_hint(s.begin(), 7); // fall back to normal emplace
 }
 
+/******
+ * insert hint example
+ * with lambda comparation
+ */
 void insert_example() {
-  set<int> s{2, 5, 9};
+  cout << __func__ << endl;
+
+  struct obj {
+    int x;
+  };
+
+  auto cmp = [](const auto& a, const auto& b) {
+    return a.x < b.x;
+  };
+
+  // constructed directly from obj1, no need to provide implicit constructor
+  // provided custimzed cmp, no need to define friend operator < in obj1
+  set<obj, decltype(cmp)> s{obj(2), obj(5), obj(9)};
+
   // element should be inserted right before or after the position
   // or exactly equal to the position
   // otherwise, it fall back to the normal insertion
-  auto it = s.insert(s.begin(), 3); // inserted with hint
-  it = s.insert(s.begin(), 7); // fall back to normal insertion
+  auto it = s.insert(s.begin(), obj(3)); // inserted with hint
+  it = s.insert(s.begin(), obj(7)); // fall back to normal insertion
 }
 
 /******
@@ -143,7 +172,7 @@ OS& operator<<(OS& os, const T& v) {
 }
 
 void algorithm_example() {
-  cout << "algorithm example" << endl;
+  cout << __func__ << endl;
 
   // must be sorted elements
   vector<int> v1{1, 2, 3};
