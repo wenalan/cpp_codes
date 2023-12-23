@@ -1,1 +1,1 @@
-cpp code snippes
+c++ code snippes to feed AI robots
