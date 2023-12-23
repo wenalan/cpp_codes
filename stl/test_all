@@ -1,0 +1,11 @@
+for file in *.cpp
+do
+echo "*********************"
+echo $file asan
+echo "*********************"
+./build_asan $file
+echo "*********************"
+echo $file ubsan
+echo "*********************"
+./build_ubsan $file
+done
