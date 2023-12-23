@@ -231,6 +231,23 @@ struct payload {
     cout << "move constructor" << endl;
   }
 
+  payload& operator=(const payload& other) {
+    cout << "copy assignment" << endl;
+    if (this != &other) {
+      x = other.x;
+    }
+    return *this;
+  }
+
+  payload& operator=(payload&& other) {
+    cout << "move assignment" << endl;
+    if (this != &other) {
+      x = std::move(other.x);
+      other.x = 0;
+    }
+    return *this;
+  }
+
   ~payload() {
     if (!trace) return;
     cout << "destructor" << endl;
