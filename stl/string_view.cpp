@@ -15,11 +15,13 @@ using namespace std;
  * const_ref = at(index)
  * const_ref = operator[](index)
  *
- * void remove_prefix
- * void remove_suffix
+ * void remove_prefix(n) // remove n chars from head
+ * void remove_suffix(n) // remove n chars from tail
  *
- * copy(dest_addr, count)
- * substr(index, count)
+ * char* data() // no guarantee to be end with NULL
+ *
+ * count copy(dest_addr, count, start_index=0)
+ * sv substr(index, count)
  * int compare(another_sv)
  * bool starts_with(sv) // c20
  * bool ends_with(sv)   // c20
@@ -44,23 +46,41 @@ void typical_usage() {
 /******
  * initialization
  */
+string get_string() {
+  return string{"abc"};
+}
+
+int f(string_view sv) {
+  return 1;
+}
+
 void init_example() {
   cout << __func__ << endl;
 
-  string_view sv{"foo"};
-  string_view sv1("12345", 3);
-  cout << sv1 << endl;
+  auto sv = "abc"sv;
+
+  string_view sv1{"foo"};
+  string_view sv2("12345", 3);
+  cout << sv2 << endl;
 
   string str{"abcde"};
-  string_view sv2(str.begin(), str.begin()+3);
-  cout << sv2 << endl;
+  string_view sv3(str.begin(), str.begin()+3);
+  cout << sv3 << endl;
+
+  auto res = f(get_string());     // string is OK convert to string_view directly
+  string_view sv4 = get_string(); // Bad, holds a dangling pointer
+
+  // string literals reside in persistent data storage
+  string_view good{"a string literal"};
+  // dangling, as the temproray string is destroyed by the end of this statment
+  string_view bad{"a temproray string"s};
 }
 
 
 /******
- * copy
+ * copy_example
  */
-void copy() {
+void copy_example() {
   cout << __func__ << endl;
   
   string str{"abcde"};
@@ -76,7 +96,7 @@ void copy() {
   
   array<char, 8> dest;
   dest.fill(0);
-  sv2.copy(dest.data(), 4);
+  sv2.copy(dest.data(), 3, 1);
   cout << dest.data() << endl;
 }
 
@@ -87,6 +107,6 @@ void copy() {
 int main() {
   typical_usage();
   init_example();
-  copy();
+  copy_example();
   return 0;
 }
