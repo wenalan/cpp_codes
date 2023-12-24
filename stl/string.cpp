@@ -3,6 +3,7 @@ using namespace std;
 
 /******
  * todo: what is basic_string?
+ * += vs +
  */
 
 /******
@@ -93,24 +94,34 @@ void init_example() {
 /******
  * advanced usage
  */
-void copy_example() {
+void show_to_chars(auto... format_args) {
+  array<char, 10> char_arr;
+
+  if (auto [last_ptr, err_code]
+        = to_chars(char_arr.data(), char_arr.data() + char_arr.size(), format_args...);
+      err_code == std::errc()) {
+    cout << string_view(char_arr.data(), last_ptr) << endl;
+  } else {
+    cout << make_error_code(err_code).message() << endl;
+  }
+}
+
+void advanced() {
   cout << __func__ << endl;
   
-  string str{"abcde"};
-  string_view sv1(str.begin(), str.end());
-  string_view sv2 = sv1;
-  cout << sv1[1] << " " << sv2[1] << endl;
+  show_to_chars(42);
+  show_to_chars(3.14159265358, chars_format::fixed, 10);
 
-  // no connection between sv1 and sv2
-  sv1.remove_prefix(2);
-  cout << sv1 << " " << sv2 << endl;
-  sv1.remove_suffix(1);
-  cout << sv1 << " " << sv2 << endl;
-  
-  array<char, 8> dest;
-  dest.fill(0);
-  sv2.copy(dest.data(), 3, 1);
-  cout << dest.data() << endl;
+  string_view sv{"123"};
+  int result{};
+  auto [last_ptr, err_code] = from_chars(sv.data(), sv.data() + sv.size(), result);
+  if (err_code == std::errc()) {
+    cout << result << endl;
+  } else if (err_code == errc::invalid_argument) {
+    cout << "not a number" << endl;
+  } else if (err_code == errc::result_out_of_range) {
+    cout << "too large" << endl;
+  }
 }
 
 
@@ -120,6 +131,6 @@ void copy_example() {
 int main() {
   typical_usage();
   init_example();
-  copy_example();
+  advanced();
   return 0;
 }
