@@ -9,11 +9,13 @@ using namespace std;
 /******
  * quick reference:
  *
- * push_back(val)
- * clear()
+ * void push_back(val)
+ * void clear()
  *
  * ref = front()
  * ref = back()
+ *
+ * void pop_back()
  *
  * insert(it, val)
  * insert(it, count, val)
@@ -25,6 +27,10 @@ using namespace std;
  *
  * erase(it)
  * erase(first_it, last_it)
+ *
+ * non-member
+ * n_removed = erase(vec, val)
+ * n_removed = erase_if(vec, [](auto const& x){...})
  */
 void typical_usage() {
   cout << __func__ << endl;
