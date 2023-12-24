@@ -2,26 +2,42 @@
 using namespace std;
 
 /******
- * todo: what is basic_string_view?
+ * todo: what is basic_string?
  */
 
 /******
- * quick reference: // after c17
+ * quick reference:
  *
  * ref = front()
  * ref = back()
+ * str substr(index=0, count=npos)
  *
  * =
  * const_ref = at(index)
  * const_ref = operator[](index)
  *
- * void remove_prefix(n) // remove n chars from head
- * void remove_suffix(n) // remove n chars from tail
+ * char& front()
+ * char& back()
+ * 
+ * char* c_str() // guarantee to be end with NULL
+ * char* data()  // guarantee to be end with NULL
+ * string_view operator
  *
- * char* data() // no guarantee to be end with NULL
+ * clear()
+ * insert()
+ * erase(index=0, count=npos)
+ * erase(it)
+ * erase(first_it, last_it)
+ * void push_back(char)
+ * void pop_back()
+ * string& append()
+ * operator +=
+ * replace(index, count, new_str)
+ * n_copied copy(dest, count, start_index) // no guarantee to be NULL end
+ * resize(len, char) // fill new space with char
  *
- * count copy(dest_addr, count, start_index=0)
- * sv substr(index, count)
+ * format("{}", val) // c26
+ *
  * int compare(another_sv)
  * bool starts_with(sv) // c20
  * bool ends_with(sv)   // c20
@@ -33,52 +49,49 @@ using namespace std;
  * index find_last_of(sv, start_index=npos)
  * index find_first_not_of(sv, start_index=0)
  * index find_last_not_of(sv, start_index=npos)
+ *
+ * non-member
+ * operator +
+ * n_removed erase(str, char_to_del)                   // c20
+ * n_removed erase_if(str, [](char x){ return true; }) // c20
+ * 
+ * IO operator
+ * >>
+ * <<
+ * getline
+ *
+ * conversion
+ * to_string(val)
+ * stoi
+ * stoll
+ * stod
+ *
+ * // high performance, do not depends on c lib
+ * // local-independent, non-allocating, non-throwing
+ * // guaratee to convert equal value back and forth
+ * to_chars    // c17
+ * from_chars  // c17
  */
 void typical_usage() {
   cout << __func__ << endl;
 
-  string str{"foo"};
-  string_view sv(str); // first, str converted to string_view
-  cout << sv[0] << endl;
+  string str{"abcde"};
+  cout << str.front() << " " << str[2] << " " << str.back() << endl;
 }
 
 
 /******
  * initialization
  */
-string get_string() {
-  return string{"abc"};
-}
-
-int f(string_view sv) {
-  return 1;
-}
-
 void init_example() {
   cout << __func__ << endl;
 
-  auto sv = "abc"sv;
-
-  string_view sv1{"foo"};
-  string_view sv2("12345", 3);
-  cout << sv2 << endl;
-
-  string str{"abcde"};
-  string_view sv3(str.begin(), str.begin()+3);
-  cout << sv3 << endl;
-
-  auto res = f(get_string());     // string is OK convert to string_view directly
-  string_view sv4 = get_string(); // Bad, holds a dangling pointer
-
-  // string literals reside in persistent data storage
-  string_view good{"a string literal"};
-  // dangling, as the temproray string is destroyed by the end of this statment
-  string_view bad{"a temproray string"s};
+  auto str = "abc"s;   // c14
 }
 
 
 /******
- * copy_example
+ * advanced usage
  */
 void copy_example() {
   cout << __func__ << endl;
