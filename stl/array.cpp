@@ -11,6 +11,8 @@ using namespace std;
  * ref = front()
  * ref = back()
  *
+ * fill(val)             // fill all elements with val
+ *
  * non-member
  * ref = get<index>(arr)        // compile time boundary check
  * std::array = to_array({...}) // after c20 length deduction
