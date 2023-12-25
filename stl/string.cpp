@@ -1,10 +1,19 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+
 /******
- * todo: what is basic_string?
- * += vs +
+ * notes:
+ *
+ * std::string is std::basic_string<char>
+ *
+ * += append rhs to lhs directly
+ * +  create a new temproray string with the content equal to lhs
+ *    then append rhs to the temproray string
+ *    finally return the temproray string
+ *    this is true, even after -O3
  */
+
 
 /******
  * quick reference:
