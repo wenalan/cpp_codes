@@ -41,15 +41,17 @@ void move_example() {
   cout << __func__ << endl;
 
   pair<vector<int>, int> p{{5, 6}, 7};
-  std::cout << std::setw(23)
+  cout << setw(23)
             << "before move "
             << "p: " << p << '\n';
 
   pair<vector<int>, int> q = make_pair(vector<int>{1, 2}, 3);
-  p = std::move(q);
-  std::cout << std::setw(23)
+  p = move(q);
+  cout << setw(23)
             << "after move "
             << "p: " << p << "  q: " << q << '\n';
+
+  cout << get<0>(p) << " " << get<int>(p) << endl;
 }
 
 
