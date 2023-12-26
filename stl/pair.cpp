@@ -5,8 +5,10 @@ using namespace std;
 /******
  * quick reference:
  * 
- * make_pair
  * =
+ *
+ * non-member
+ * make_pair
  * get
  * 
  */
@@ -54,6 +56,39 @@ void move_example() {
   cout << get<0>(p) << " " << get<int>(p) << endl;
 }
 
+/******
+ * piecewise_construct
+ */
+struct Foo
+{
+    Foo(std::tuple<int, float>)
+    {
+        std::cout << "Constructed a Foo from a tuple\n";
+    }
+ 
+    Foo(int, float)
+    {
+        std::cout << "Constructed a Foo from an int and a float\n";
+    }
+};
+
+void piecewise_construct_example() {
+    std::tuple<int, float> t(1, 3.14);
+ 
+    std::cout << "Creating p1...\n";
+    std::pair<Foo, Foo> p1(t, t);
+ 
+    std::cout << "Creating p2...\n";
+    std::pair<Foo, Foo> p2(std::piecewise_construct, t, t);
+
+
+    std::map<std::string, std::string> m;
+    m.emplace(std::piecewise_construct,
+          std::forward_as_tuple("k"),
+          std::forward_as_tuple(3, 'c'));
+    // m[k] == 'ccc'
+}
+
 
 /******
  * main
@@ -61,5 +96,6 @@ void move_example() {
 int main() {
   typical_usage();
   move_example();
+  piecewise_construct_example();
   return 0;
 }
