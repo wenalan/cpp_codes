@@ -13,8 +13,25 @@ using namespace std;
  * 2) if operator is ',' then parenthesis does not change the order of calculation
  * 3) E always numbered from 1 to N, from left to right
  * 4) ... and I, marks the position of inner parenthesis
+ *
+ * operator | value when pack is empty
+ *    &&    |   true
+ *    ||    |   false
+ *    ,     |   void()
+ *
+ * used in lambda
+ *  void foo(Args... args) {
+ *    [...xs=args]{
+ *        bar(xs...);             // xs is an init-capture pack
+ *    };
+ *  }
+ * 
  */
 
+
+/*******
+ * print args
+ */
 template <typename... Args>
 void print_args(Args&&... args) {
     (cout << ... << args) << endl;
@@ -24,9 +41,59 @@ template<typename T, typename... Args>
 void push_back_vec(std::vector<T>& v, Args&&... args) {
     static_assert((std::is_constructible_v<T, Args&&> && ...));
     (v.push_back(std::forward<Args>(args)), ...);
-    // (..., v.push_back(std::forward<Args>(args))); // same order
+    // (..., v.push_back(std::forward<Args>(args))); // same border
 }
 
+
+/*******
+ * print strings
+ * https://www.scs.stanford.edu/~dm/blog/param-pack.html
+ */
+void print_strings(std::convertible_to<std::string_view> auto&& ...s)
+{
+  for (auto v : std::initializer_list<std::string_view>{ s... })
+    std::cout << v << " ";
+  std::cout << std::endl;
+}
+
+
+/*******
+ * convert to upper case
+ */
+void dump_msg(auto&&... args) {
+    (cout << ... << args) << endl;
+}
+
+template<std::same_as<char> ...C>
+void convert_to_upper_case(C...c) {
+  std::tuple<C...> tpl(c...);
+
+  const char msg[] = { C(std::toupper(c))..., '\0' };
+  dump_msg(msg, c...);
+}
+
+
+/*******
+ * nested
+ */
+constexpr int sum(std::convertible_to<int> auto ...il) {
+  int r = 0;
+  for (int i : { int(il)... })
+    r += i;
+  return r;
+}
+
+template<int ...N>
+struct Nested {
+  static constexpr int nested_sum(auto ...v) {
+    return sum(sum(N..., v)...);
+  }
+};
+
+
+/*******
+ * overloaded lambda
+ */
 // https://www.fluentcpp.com/2021/03/19/what-c-fold-expressions-can-bring-to-your-code/
 struct Employee {
     int id;
@@ -51,7 +118,7 @@ struct CompareWithId
 
 template<typename... Lambdas>
 struct overloaded : public Lambdas... {
-    // ? works if uncomments line 55 and line 59 ?
+    // ? still works if uncomments line 55 and line 59 !
     // explicit overloaded(Lambdas... lambdas) : Lambdas(lambdas)... {}
     using Lambdas::operator()...;
 };
@@ -74,7 +141,13 @@ void overload_test() {
 
 int main() {
     print_args(42, "abc", 3.14);
+    print_strings("one", std::string{"two"});
 
+    static_assert(Nested<1>::nested_sum(100, 200) == 302);
+    // Equivalent to:  sum(sum(1, 100),sum(1, 200)) == 302
+    
+    convert_to_upper_case('a', 'b');
+    
     vector<int> v{};
     push_back_vec(v, 1, 2, 9);
     for (int i : v)
