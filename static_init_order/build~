@@ -1,0 +1,6 @@
+g++ -c main_bad.cpp
+g++ -c static_bad.cpp
+g++ main_bad.o static_bad.o -o main_static_bad
+g++ static_bad.o main_bad.o -o static_main_bad
+
+

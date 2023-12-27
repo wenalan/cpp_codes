@@ -1,0 +1,15 @@
+g++ -c main_bad.cpp
+g++ -c static_bad.cpp
+g++ main_bad.o static_bad.o -o main_static_bad
+g++ static_bad.o main_bad.o -o static_main_bad
+
+g++ -c main_lazy_good.cpp
+g++ -c static_lazy_good.cpp
+g++ main_lazy_good.o static_lazy_good.o -o main_static_lazy_good
+g++ static_lazy_good.o main_lazy_good.o -o static_main_lazy_good
+
+g++ -c main_constinit_good.cpp
+g++ -c static_constinit_good.cpp
+g++ main_constinit_good.o static_constinit_good.o -o main_static_constinit_good
+g++ static_constinit_good.o main_constinit_good.o -o static_main_constinit_good
+
