@@ -15,6 +15,7 @@ using namespace std;
  * tuple_cat(...)
  */
 void typical_usage() {
+  cout << forward_as_tuple << tuple_cat_example
   cout << __func__ << endl;
 
   auto tp = make_tuple("abc", 42, 3.14);
