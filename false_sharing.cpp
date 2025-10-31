@@ -1,3 +1,5 @@
+// clang++ -O3 -std=c++17 -pthread false_sharing_bench.cpp -o bench
+
 #include <atomic>
 #include <chrono>
 #include <iostream>
