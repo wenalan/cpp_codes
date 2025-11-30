@@ -1,0 +1,45 @@
+rust
+[STATS] samples=100 min=1us max=30us p10=3us p50=10us p90=14us p99=26us
+[STATS] samples=100 min=2us max=60us p10=7us p50=13us p90=21us p99=52us
+[STATS] samples=100 min=1us max=29us p10=5us p50=10us p90=18us p99=23us
+[STATS] samples=100 min=1us max=72us p10=6us p50=9us p90=14us p99=41us
+[STATS] samples=100 min=7us max=568us p10=12us p50=21us p90=58us p99=138us
+[STATS] samples=100 min=1us max=65us p10=4us p50=15us p90=27us p99=60us
+
+c++
+md.cpp (baseline): nlohmann::json, std::stod, copies WS payload to std::string, prints per update; measures proc_us, stops after 100 with stats (min/max/p10/p50/p90/p99).
+[STATS] samples=100 min=12us max=357us p10=25us p50=42us p90=86us p99=316us
+[STATS] samples=100 min=10us max=98us p10=24us p50=36us p90=63us p99=90us
+[STATS] samples=100 min=9us max=1727us p10=31us p50=45us p90=162us p99=1530us
+[STATS] samples=100 min=5us max=99us p10=24us p50=36us p90=55us p99=94us
+
+md2.cpp (lighter): still nlohmann::json but reduces copies (std::string_view from Beast buffer), uses std::from_chars fallback to stod, turns off iostream sync, same 100-update stats.
+[STATS] samples=100 min=7us max=219us p10=20us p50=43us p90=76us p99=189us
+[STATS] samples=100 min=9us max=61us p10=22us p50=30us p90=45us p99=60us
+[STATS] samples=100 min=7us max=228us p10=20us p50=35us p90=53us p99=152us
+[STATS] samples=100 min=7us max=228us p10=20us p50=35us p90=53us p99=152us
+
+md3.cpp (RapidJSON): replaces nlohmann with RapidJSON, parses directly from string_view, uses from_chars/strtod, keeps the 100-update cap and stats.
+[STATS] samples=100 min=3us max=111us p10=10us p50=15us p90=29us p99=82us
+[STATS] samples=100 min=8us max=280us p10=14us p50=25us p90=69us p99=172us
+[STATS] samples=100 min=4us max=190us p10=10us p50=15us p90=26us p99=44us
+[STATS] samples=100 min=3us max=119us p10=9us p50=16us p90=32us p99=74us
+
+md4.cpp (simdjson): uses simdjson on-demand parsing for REST/WS, parses directly from string_view, from_chars fallback for numbers, same 100-update cap/stats; requires linking -lsimdjson.
+[STATS] samples=100 min=1us max=98us p10=7us p50=12us p90=14us p99=28us
+[STATS] samples=100 min=2us max=36us p10=6us p50=11us p90=14us p99=28us
+[STATS] samples=100 min=1us max=112us p10=7us p50=14us p90=19us p99=65us
+[STATS] samples=100 min=2us max=101us p10=8us p50=14us p90=23us p99=99us
+
+
+Your “proc_us” is just parse+apply per message, so swings like that come from a few factors:
+
+Message size variation: some WS updates carry more levels, so you parse more JSON and apply more deltas. A single heavier payload can push max and even p50 if the run happens during a busier burst.
+CPU scheduling/clock: with only 100 samples, a context switch, DVFS (freq scaling/turbo), or other system load can double the median and inflate the tail.
+Warmth/caches/allocator: first runs vs later, cache state, allocator state can skew small samples.
+To stabilize and compare:
+
+Collect more samples (e.g., 10k) and look at med/p95/p99.
+Pin to a core and keep the CPU governor steady (taskset -c 0 and a performance governor).
+Run when the system is otherwise idle.
+If you want to isolate parser cost, temporarily skip printing/logging and only time parse/apply.
