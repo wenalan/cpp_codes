@@ -307,6 +307,9 @@ int main(int argc, char **argv) {
         continue;
       }
 
+      bool need_resnapshot = false;
+      std::size_t bridge_stale = 0;
+      constexpr std::size_t BRIDGE_STALE_LIMIT = 200;
       // 3) Bridge buffered updates
       boost::beast::flat_buffer buffer;
       for (;;) {
@@ -316,10 +319,16 @@ int main(int argc, char **argv) {
         auto recv_ms = now_ms();
         std::string_view payload_view(
             static_cast<const char *>(buffer.cdata().data()), buffer.size());
+        std::cout << "[DEBUG] bridge payload bytes=" << payload_view.size()
+                  << " last_id=" << last_id << std::endl;
         try {
           auto before = last_id;
           apply_update_json(payload_view, last_id, book);
+          std::cout << "[DEBUG] bridge update applied "
+                    << "before=" << before << " after=" << last_id
+                    << std::endl;
           if (last_id != before) {
+            bridge_stale = 0;
             auto proc = to_us(Clock::now() - t_recv);
             latencies.push_back(proc);
             print_book(book, 10, proc, recv_ms);
@@ -330,9 +339,28 @@ int main(int argc, char **argv) {
             }
             break;
           }
-        } catch (...) {
-          continue;
+          if (++bridge_stale > BRIDGE_STALE_LIMIT) {
+            std::cerr << "[DEBUG] too many stale bridge updates; "
+                      << "last_id=" << last_id << std::endl;
+            need_resnapshot = true;
+            break;
+          }
+        } catch (const std::exception &e) {
+          std::cerr << "[DEBUG] bridge apply error: " << e.what()
+                    << " payload bytes=" << payload_view.size()
+                    << " last_id=" << last_id << std::endl;
+          need_resnapshot = true;
+          break;
         }
+      }
+
+      if (need_resnapshot) {
+        std::cerr << "[BINANCE] bridge failed, taking new snapshot"
+                  << std::endl;
+        boost::system::error_code ec;
+        ws.close(boost::beast::websocket::close_code::normal, ec);
+        std::this_thread::sleep_for(1s);
+        continue;
       }
 
       if (g_stop.load()) break;
@@ -358,7 +386,8 @@ int main(int argc, char **argv) {
           }
         } catch (const std::exception &e) {
           std::cerr << "[BINANCE] " << e.what() << " — resyncing..."
-                    << std::endl;
+                    << " last_id=" << last_id
+                    << " payload bytes=" << payload_view.size() << std::endl;
           break;
         }
       }
