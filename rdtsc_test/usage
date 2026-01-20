@@ -1,0 +1,5 @@
+sudo insmod rdtscp.ko
+
+sudo dmesg | tail -n 50
+
+sudo rmmod rdtscp
