@@ -1,0 +1,71 @@
+有哪些“简单但结构像真的”的策略模型？
+
+你想要“像真的”而不是“赚钱”，那就选那些能逼着你把系统关键模块都用上的策略。下面给 4 个从易到难的选择。
+
+策略 1：单品种 Top-of-book 做市（最推荐第一个）
+
+结构最像真实 MM：持续报价、撤单/改价、库存控制、熔断。
+
+输入：best bid/ask、spread、imbalance、短窗波动、inventory
+
+输出：两边挂单（post-only），定时 refresh
+
+简单规则：
+
+基础价：mid = (bid+ask)/2
+
+spread：base_spread + k * short_vol
+
+skew：mid += -inv * skew_k
+
+触发撤单：spread变大/延迟变大/队列积压就撤
+
+你会学到：quote engine、replace/cancel、inventory、风控与抖动保护。
+
+策略 2：被动成交后对冲（maker → taker hedge）
+
+这就是你之前提的思路，非常贴近实战结构。
+
+在 A venue 挂 maker 单
+
+一旦成交（partial 也算），立刻在 B venue 发 taker 对冲
+
+优先级：先 cancel 其他挂单，再对冲（或反过来，做实验）
+
+你会学到：组合状态机（LegCoordinator）、部分成交、撤单竞态、失败兜底。
+
+策略 3：简单 basis（同所 spot-perp 或跨所同品种）
+
+监控价差 spread = priceA - priceB
+
+超阈值就做一买一卖，并设止损/超时
+
+执行用 IOC 或小步拆单
+
+你会学到：两腿同步、滑点、资金占用、风险预算。
+
+策略 4：纯执行算法（TWAP/VWAP 练习版）
+
+给定目标仓位变化，在一段时间内执行：
+
+每 100ms 发一小笔
+
+根据盘口深度调节每笔 size
+
+你会学到：执行与冲击成本、队列与限频、统计与归因（很工程）。
+
+4) 我建议你从哪一个开始（学习效率最高）
+
+策略 1（单品种 MM） + 很简单的 fill 模型（touch 或 queue_share）
+
+加入 抖动保护 + 风控熔断（队列深度、tick-to-send p99）
+
+再做 策略 2（maker→taker hedge），把 OMS/回报乱序/兜底都练全
+
+5) 一个很实用的小建议：先做“两种回放模式”
+
+Real-time replay：按原始间隔跑，观察 tail 和系统稳定性
+
+Fast replay：尽快跑完，方便调参/回归测试
+
+学习阶段这两种都非常有用。

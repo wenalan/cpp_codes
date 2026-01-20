@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/hft_demo.dir/src/main.cpp.o CMakeFiles/hft_demo.dir/src/feed_handler.cpp.o CMakeFiles/hft_demo.dir/src/logging.cpp.o CMakeFiles/hft_demo.dir/src/oms_risk.cpp.o CMakeFiles/hft_demo.dir/src/strategy_shard.cpp.o CMakeFiles/hft_demo.dir/src/trade_io.cpp.o CMakeFiles/hft_demo.dir/src/order_book.cpp.o -o hft_demo  -lpthread 
