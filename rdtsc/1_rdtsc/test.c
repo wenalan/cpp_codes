@@ -11,7 +11,7 @@
 //#define BOUND_OF_LOOP 1000
 #define UINT64_MAX (18446744073709551615ULL)
 
-void inline Filltimes(uint64_t **times)
+inline void Filltimes(uint64_t **times)
 {
     unsigned long flags;
     int i, j;
@@ -19,26 +19,18 @@ void inline Filltimes(uint64_t **times)
     unsigned cycles_low, cycles_high, cycles_low1, cycles_high1;
     volatile int variable = 0;
 
-    asm volatile ("CPUID\n\t"
-		    "RDTSC\n\t"
-		    "mov %%edx, %0\n\t"
-		    "mov %%eax, %1\n\t": "=r" (cycles_high), "=r" (cycles_low)::
-		    "%rax", "%rbx", "%rcx", "%rdx");
-    asm volatile("RDTSCP\n\t"
-		    "mov %%edx, %0\n\t"
-		    "mov %%eax, %1\n\t"
-		    "CPUID\n\t": "=r" (cycles_high1), "=r" (cycles_low1):: "%rax",
-		    "%rbx", "%rcx", "%rdx");
-    asm volatile ("CPUID\n\t"
-		    "RDTSC\n\t"
-		    "mov %%edx, %0\n\t"
-		    "mov %%eax, %1\n\t": "=r" (cycles_high), "=r" (cycles_low)::
-		    "%rax", "%rbx", "%rcx", "%rdx");
-    asm volatile("RDTSCP\n\t"
-		    "mov %%edx, %0\n\t"
-		    "mov %%eax, %1\n\t"
-		    "CPUID\n\t": "=r" (cycles_high1), "=r" (cycles_low1):: "%rax",
-		    "%rbx", "%rcx", "%rdx");
+    asm volatile("CPUID\n\t"
+                 "RDTSC\n\t"
+                 "mov %%edx, %0\n\t"
+                 "mov %%eax, %1\n\t" : "=r"(cycles_high), "=r"(cycles_low)::"%rax", "%rbx", "%rcx", "%rdx");
+    asm volatile("CPUID\n\t"
+                 "RDTSC\n\t"
+                 "CPUID\n\t"
+                 "RDTSC\n\t"
+                 "mov %%edx, %0\n\t"
+                 "mov %%eax, %1\n\t" : "=r"(cycles_high), "=r"(cycles_low)::"%rax", "%rbx", "%rcx", "%rdx");
+    asm volatile("CPUID\n\t"
+                 "RDTSC\n\t" ::: "%rax", "%rbx", "%rcx", "%rdx");
 
     for (j = 0; j < BOUND_OF_LOOP; j++)
     {
@@ -50,19 +42,17 @@ void inline Filltimes(uint64_t **times)
             preempt_disable();
             raw_local_irq_save(flags);
 
-	    asm volatile ("CPUID\n\t"
-			    "RDTSC\n\t"
-			    "mov %%edx, %0\n\t"
-			    "mov %%eax, %1\n\t": "=r" (cycles_high), "=r"
-			    (cycles_low):: "%rax", "%rbx", "%rcx", "%rdx");
-	    /***********************************/
-	    /*call the function to measure here*/
-	    /***********************************/
-	    asm volatile("RDTSCP\n\t"
-			    "mov %%edx, %0\n\t"
-			    "mov %%eax, %1\n\t"
-			    "CPUID\n\t": "=r" (cycles_high1), "=r"
-			    (cycles_low1):: "%rax", "%rbx", "%rcx", "%rdx");
+            asm volatile(
+                "CPUID\n\t"
+                "RDTSC\n\t"
+                "mov %%edx, %0\n\t"
+                "mov %%eax, %1\n\t" : "=r"(cycles_high), "=r"(cycles_low)::"%rax", "%rbx", "%rcx", "%rdx");
+            /*call the function to measure here*/
+            asm volatile(
+                "CPUID\n\t"
+                "RDTSC\n\t"
+                "mov %%edx, %0\n\t"
+                "mov %%eax, %1\n\t" : "=r"(cycles_high1), "=r"(cycles_low1)::"%rax", "%rbx", "%rcx", "%rdx");
 
             raw_local_irq_restore(flags);
             preempt_enable();
