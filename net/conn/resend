@@ -1,0 +1,149 @@
+如何设计一个实验，观察这个重传呢
+
+下面给你一套**非常容易复现、而且能“亲眼看到 TCP 重传”**的实验。核心思路是：
+
+用 netns+veth 在一台机器上模拟 client/server
+
+用 tc netem 在链路上制造 丢包/延迟
+
+用 tcpdump -S 看同一段 seq 反复出现（= 重传）
+
+用 ss -ti 看 retrans/unacked/rto/backoff 等内核视角指标
+
+实验 0：准备 netns/veth（只做一次）
+sudo ip netns add nsC
+sudo ip netns add nsS
+sudo ip link add vethC type veth peer name vethS
+sudo ip link set vethC netns nsC
+sudo ip link set vethS netns nsS
+sudo ip -n nsC addr add 10.200.1.1/24 dev vethC
+sudo ip -n nsS addr add 10.200.1.2/24 dev vethS
+sudo ip -n nsC link set lo up
+sudo ip -n nsS link set lo up
+sudo ip -n nsC link set vethC up
+sudo ip -n nsS link set vethS up
+
+实验 1：观察“数据段重传”（最直观）
+1) server（nsS）启动：一直读数据
+sudo ip netns exec nsS python3 - <<'PY'
+import socket
+s=socket.socket()
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind(("10.200.1.2",8080))
+s.listen(1)
+c,addr=s.accept()
+print("accepted", addr)
+n=0
+while True:
+    d=c.recv(65536)
+    if not d: break
+    n += len(d)
+print("server received bytes:", n)
+c.close(); s.close()
+PY
+
+2) 在 server 侧抓包（能看到重复 seq）
+
+开一个新终端：
+
+sudo ip netns exec nsS tcpdump -i vethS -nn -tttt -vv -S 'tcp port 8080'
+
+
+你要关注输出里 seq x:y，稍后你会看到同一段 seq x:y 又出现一次（甚至多次）= 重传/重复到达。
+
+3) 在 server → client 方向制造丢包（丢 ACK 更容易触发 client 重传）
+
+再开一个终端：
+
+sudo ip netns exec nsS tc qdisc replace dev vethS root netem loss 30% delay 50ms
+
+
+为什么在 nsS 的 vethS 上做？
+因为这会影响 server 发回 client 的包（大量是 ACK），ACK 丢了 client 就会重传数据段。
+
+4) client（nsC）发送一大块数据
+sudo ip netns exec nsC python3 - <<'PY'
+import socket, os
+s=socket.socket()
+s.connect(("10.200.1.2",8080))
+data=os.urandom(2_000_000)  # 2MB
+s.sendall(data)
+s.close()
+PY
+
+5) 用 ss -ti 从内核视角看重传
+sudo ip netns exec nsC ss -ti '( dport = :8080 or sport = :8080 )'
+
+
+你会看到类似 retrans:、unacked:、rto:、backoff: 之类字段在变化（不同内核输出略有差异）。
+
+6) 清理 netem
+sudo ip netns exec nsS tc qdisc del dev vethS root
+
+实验 2：观察“调用 close() 后内核还在重传”的现象（对应你问的默认行为）
+
+这个实验要点：client 发完就 close，但因为 ACK 丢得很厉害，内核仍然需要重传未确认的数据。你会看到连接在内核里还活着、并且有重传计时器在跑。
+
+1) 让 ACK 基本收不到（更明显）
+sudo ip netns exec nsS tc qdisc replace dev vethS root netem loss 90% delay 100ms
+
+sudo ip netns exec nsS tc qdisc replace dev vethS root netem loss 30% delay 50ms
+
+
+2) client：发数据后立刻 close()，然后 sleep（方便你观测）
+sudo ip netns exec nsC python3 - <<'PY'
+import socket, os, time
+s=socket.socket()
+s.connect(("10.200.1.2",8080))
+s.sendall(os.urandom(1_000_000))
+s.close()          # 默认 SO_LINGER 关闭：close 立刻返回
+print("client close() returned; sleeping so you can observe kernel retrans...")
+time.sleep(60)
+PY
+
+3) 观测：ss / tcpdump
+
+看连接状态、计时器、重传：
+
+sudo ip netns exec nsC ss -tan 'dst 10.200.1.2 dport = :8080'
+sudo ip netns exec nsC ss -ti  'dst 10.200.1.2 dport = :8080'
+
+
+抓包看同 seq 反复出现：
+
+sudo ip netns exec nsS tcpdump -i vethS -nn -tttt -vv -S 'tcp port 8080'
+
+4) 清理
+sudo ip netns exec nsS tc qdisc del dev vethS root
+
+对比实验：SO_LINGER=0（RST/abort）时基本不会“慢慢重传”
+
+你可以把 client 改成这样（重点：设置 linger=0，然后 close）：
+
+sudo ip netns exec nsC python3 - <<'PY'
+import socket, os, time, struct
+s=socket.socket()
+s.connect(("10.200.1.2",8080))
+s.send(os.urandom(200000))  # 故意不用 sendall，留下一点没送完也没关系
+s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+s.close()
+print("abortive close done (likely RST). sleep 10s for observation...")
+time.sleep(10)
+PY
+
+
+抓包里你大概率能看到 RST，而且 ss 里不会像默认那样长时间维持“等待确认+重传”。
+
+你观测“重传”时，最可靠的判据是什么？
+
+tcpdump -S 看到同一段 seq a:b 反复出现（或者 server 侧收到同 seq 的重复段）
+
+ss -ti 看到 retrans/unacked/rto/backoff 变化
+
+如果你把你系统上 ss -ti 的输出贴一小段（那几行就行），我还能帮你逐字段解释：哪个表示未确认、哪个表示重传退避、哪个表示定时器在等什么。
+
+
+
+
+
+sudo ip netns exec nsS tcpdump -l -i vethS -nn -tttt -vv -S 'tcp port 8080' |   egrep 'Flags \[P\.]|Flags \[F|Flags \[R|ack '

@@ -1,0 +1,52 @@
+1) 正常建立/正常关闭（看 FIN-WAIT / TIME-WAIT）
+python3 server.py 8080 normal
+python3 client.py 127.0.0.1 8080 close_first
+
+watch -n 0.2 "ss -tanp '( sport = :8080 or dport = :8080 )'"
+
+通常你会看到：
+client（主动 close）走 FIN-WAIT-1 → FIN-WAIT-2 → TIME-WAIT
+server（被动）走 CLOSE-WAIT → LAST-ACK → CLOSED（更准确说不再出现在列表里）
+
+
+2) “CLOSE-WAIT 卡住”演示（最经典学习点）
+python3 server.py 8080 no_close
+python3 client.py 127.0.0.1 8080 close_first
+你会看到 server 端连接长期停在 CLOSE-WAIT（这就是很多线上“连接泄漏”的典型形态：应用没 close）。
+
+
+3) RST（异常断开）
+python3 server.py 8080 normal
+python3 client.py 127.0.0.1 8080 rst
+
+用 tcpdump 能清楚看到 RST。
+sudo tcpdump -i lo -nn -vv 'tcp port 8080 and (tcp[tcpflags] & tcp-rst != 0)'
+sudo tcpdump -i eth0 -nn -vv 'tcp port 8080 and (tcp[tcpflags] & tcp-rst != 0)'
+sudo ip netns exec nsS tcpdump -i vethS -nn -vv 'tcp port 8080 and (tcp[tcpflags] & tcp-rst != 0)'
+
+sudo tcpdump -i lo -nn -tttt -vv -S 'tcp port 8080'
+sudo tcpdump -i lo -nn -vv -S 'tcp port 8080 and (tcp[tcpflags] & tcp-rst != 0)'
+
+
+
+一台机器模拟“两台主机”：netns + veth
+sudo ip netns add nsC
+sudo ip netns add nsS
+sudo ip link add vethC type veth peer name vethS
+sudo ip link set vethC netns nsC
+sudo ip link set vethS netns nsS
+sudo ip -n nsC addr add 10.200.1.1/24 dev vethC
+sudo ip -n nsS addr add 10.200.1.2/24 dev vethS
+sudo ip -n nsC link set lo up
+sudo ip -n nsS link set lo up
+sudo ip -n nsC link set vethC up
+sudo ip -n nsS link set vethS up
+
+运行：
+sudo ip netns exec nsS python3 server.py 8080 normal
+sudo ip netns exec nsC python3 client.py 10.200.1.2 8080 close_first
+sudo ip netns exec nsC ss -tanp
+
+加延迟/丢包（制造重传、SYN 超时等）
+sudo ip netns exec nsC tc qdisc add dev vethC root netem delay 50ms loss 5%
+

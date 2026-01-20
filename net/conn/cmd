@@ -1,0 +1,66 @@
+观测状态最常用工具（强烈推荐顺序）
+
+1) ss（首选）
+看 TCP 状态最快最准：
+# 看所有 TCP（含状态、进程）
+ss -tanp
+# 只看某个端口相关连接（比如 8080）
+ss -tanp '( sport = :8080 or dport = :8080 )'
+# 持续刷新观察状态跳变
+watch -n 0.2 "ss -tanp '( sport = :8080 or dport = :8080 )'"
+# 额外信息（计时器、重传、cwnd、rto 等）
+ss -ti '( sport = :8080 or dport = :8080 )'
+
+
+2) tcpdump / Wireshark（看包，理解状态为什么变）
+# 同机/lo 上抓包（端口 8080）
+sudo tcpdump -i lo -nn -vv 'tcp port 8080'
+
+
+3) strace（看程序何时调用了 connect/accept/close）
+# 跟踪网络相关系统调用
+strace -f -e trace=network -p <pid>
+
+
+
+
+2) tcpdump 看 RST：具体命令
+
+假设端口是 8080，同机观测走 lo：
+
+只抓 RST 包
+sudo tcpdump -i lo -nn -vv 'tcp port 8080 and (tcp[tcpflags] & tcp-rst != 0)'
+
+抓完整握手/挥手（含序号更直观）
+sudo tcpdump -i lo -nn -tttt -vv -S 'tcp port 8080'
+
+
+如果你用 netns/veth（比如 vethC/vethS），把 -i lo 换成对应网卡即可。
+
+2) tcpdump 的 -i lo 换成 netns/veth 要怎么换？
+
+两件事要同时注意：
+
+A) 同一个 namespace 里抓 veth：把接口名换掉
+
+比如你在 client namespace 抓 vethC：
+
+sudo ip netns exec nsC tcpdump -i vethC -nn -tttt -vv -S 'tcp port 8080'
+
+
+在 server namespace 抓 vethS：
+
+sudo ip netns exec nsS tcpdump -i vethS -nn -tttt -vv -S 'tcp port 8080'
+
+
+关键点：vethC 只存在于 nsC，vethS 只存在于 nsS；所以必须配合 ip netns exec。
+
+B) 如果你不确定接口名是什么，先列出来
+sudo ip netns exec nsC ip link
+sudo ip netns exec nsS ip link
+
+C) 你也可以抓 “任意接口”（有时更省事）
+sudo ip netns exec nsC tcpdump -i any -nn 'tcp port 8080'
+
+
+如果你把你现在 netns 的名字、端口、以及 ip netns exec nsC ip link 的输出贴一下，我可以直接给你一套“抓包 + ss 观测 + 造状态”的命令，完全按你的接口名写好。

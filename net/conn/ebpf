@@ -1,0 +1,27 @@
+eBPF：用 bpftrace 直接看 TCP 状态迁移
+
+最省事的思路是先列出你系统上有哪些相关 tracepoint，然后用一个最短脚本打印状态变化。
+
+5.1 先找可用的 tracepoint
+sudo bpftrace -l 'tracepoint:sock:*state*'
+sudo bpftrace -l 'tracepoint:tcp:*state*'
+
+
+常见会有一个：tracepoint:sock:inet_sock_set_state
+
+5.2 直接打印状态迁移（推荐）
+
+如果你的机器有 inet_sock_set_state，试这个（打印 old→new，含四元组）：
+
+sudo bpftrace -e '
+tracepoint:sock:inet_sock_set_state
+/args->protocol == IPPROTO_TCP/
+{
+  printf("%s:%d -> %s:%d  %d -> %d\n",
+    ntop(args->saddr), args->sport,
+    ntop(args->daddr), args->dport,
+    args->oldstate, args->newstate);
+}'
+
+
+说明：不同内核/发行版上字段名可能略有差别。如果你运行报 “unknown field”，把报错贴出来，我就按你那台机子的 tracepoint 字段给你改成“可直接跑”的版本（通常改动很小）。

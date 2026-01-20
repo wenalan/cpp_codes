@@ -1,0 +1,54 @@
+大体方向是对的：还走 kernel 网络栈时，想把 tail latency 压下去，通常就是走到“busy poll + 一堆内核/网卡调优”这条路；再往上（更低、更稳）才是 kernel-bypass（DPDK/AF_XDP/F-Stack）。
+
+但我会把它说得更准确一点：
+
+1) kernel 驱动下，“最低延迟”通常是这几件一起做，不是只有 busy poll
+
+busy poll（SO_BUSY_POLL / net.core.busy_poll）确实是关键武器，因为它减少“睡眠→唤醒”的抖动。
+
+不过如果只开 busy poll，不配套下面这些，效果常常打折：
+
+线程绑核（RX/处理线程固定在某个 core）
+
+网卡 IRQ/NAPI 绑核（让包尽量在同核/同 NUMA 处理，少跨核）
+
+关掉/调小 interrupt coalescing（ethtool -C），否则你在 busy poll 也可能等到网卡攒包才上报
+
+关 GRO/LRO（看场景）：很多 HFT 会关 GRO（减少批处理带来的延迟/抖动），吞吐会变差
+
+避免省电 C-state / 频率波动（performance governor 等）：不然唤醒/频率爬升会把尾延迟拉长
+
+所以更像一句话是：
+“kernel 低延迟上限 = 亲和性 + NIC/内核参数 +（可选）busy poll”。
+
+2) busy poll 是“最好的 kernel 方案”吗？
+
+如果你的目标是 最低/最稳的 tail latency，并且你能接受 更多 CPU 消耗，那 busy poll 往往是 kernel 栈里最有效的一档。
+
+但也有例外：
+
+你是 WebSocket + TLS + libcurl 这种高层协议：瓶颈可能更多在 TLS/用户态解析/内存分配，而不是“等包”的那几微秒
+
+你更在乎 CPU 成本：阻塞 epoll + 绑核/IRQ 调优可能“足够好”
+
+3) “再上去就要 DPDK”——基本对，但中间还有 AF_XDP/XDP 这档
+
+从“改动/复杂度”到“延迟上限”大概可以这么排：
+
+kernel 栈 + 调优（epoll/recv + 绑核/IRQ/coalesce/GRO）
+
+kernel 栈 + busy poll（更低 tail，吃 CPU）
+
+AF_XDP（XDP socket）（半 bypass：用户态收发更直接，但仍在 Linux 生态里）
+
+DPDK / F-Stack（更彻底的用户态轮询，最可控，但工程复杂度最高）
+
+你可以用这个判断法选路线
+
+UDP feed、连接少、追求 p99.9：先做 kernel 调优 + busy poll；不够再上 AF_XDP/DPDK
+
+TCP/TLS（WebSocket）：先把 用户态（TLS、解析、内存分配、线程模型）吃掉的延迟优化掉；否则换 DPDK 可能收益没你想的大
+
+要极致稳定（比赛级/交易所托管机房那种）：最终大概率会走到 bypass
+
+如果你告诉我：你现在行情是 UDP multicast 还是 WebSocket(TCP+TLS)，以及你最在意 avg 还是 p99/p99.9，我可以直接给你一条“按收益排序”的优化清单（从最小改动开始）。
