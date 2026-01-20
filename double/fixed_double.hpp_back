@@ -1,0 +1,176 @@
+#pragma once
+
+#include <bit>
+#include <cmath>
+#include <cstdint>
+#include <limits>
+#include <ostream>
+#include <stdexcept>
+
+// FixedDouble implements a signed Q32.32 fixed-point number backed by a
+// uint64_t. The expressible range is roughly +/- 2.147e9 with ~1e-9
+// resolution—much smaller than IEEE754 double but faster for add/mul/div
+// when the tighter range is acceptable.
+class FixedDouble {
+public:
+    using storage_type = std::uint64_t;
+    using signed_storage_type = std::int64_t;
+
+    static constexpr int fractional_bits = 32;
+    static constexpr storage_type scale = storage_type{1} << fractional_bits;
+    static constexpr double inv_scale = 1.0 / static_cast<double>(scale);
+
+    constexpr FixedDouble() = default;
+
+    static constexpr FixedDouble from_raw(storage_type raw) { return FixedDouble(raw); }
+
+    static constexpr FixedDouble from_int(std::int64_t value) {
+        return FixedDouble(to_raw(saturate_to_signed(static_cast<wide_type>(value) << fractional_bits)));
+    }
+
+    static FixedDouble from_double(double value) {
+        if (!std::isfinite(value)) {
+            throw std::invalid_argument("FixedDouble cannot represent NaN or infinity");
+        }
+        const double scaled = std::ldexp(value, fractional_bits); // value * 2^fractional_bits
+        if (scaled >= static_cast<double>(kMaxRaw)) {
+            return FixedDouble(to_raw(kMaxRaw));
+        }
+        if (scaled <= static_cast<double>(kMinRaw)) {
+            return FixedDouble(to_raw(kMinRaw));
+        }
+        return FixedDouble(to_raw(static_cast<signed_storage_type>(std::llround(scaled))));
+    }
+
+    double to_double() const { return static_cast<double>(as_signed(raw_)) * inv_scale; }
+    std::int64_t to_int64() const { return as_signed(raw_) >> fractional_bits; }
+    storage_type raw_value() const { return raw_; }
+
+    // Arithmetic
+    FixedDouble& operator+=(FixedDouble other) {
+        //raw_ = to_raw(saturating_add(as_signed(raw_), as_signed(other.raw_)));
+        raw_ = to_raw(as_signed(raw_) + as_signed(other.raw_));
+        return *this;
+    }
+
+    FixedDouble& operator-=(FixedDouble other) {
+        //raw_ = to_raw(saturating_sub(as_signed(raw_), as_signed(other.raw_)));
+        raw_ = to_raw(as_signed(raw_) - as_signed(other.raw_));
+        return *this;
+    }
+
+    FixedDouble& operator*=(FixedDouble other) {
+        raw_ = to_raw(saturating_mul(as_signed(raw_), as_signed(other.raw_)));
+        return *this;
+    }
+
+    FixedDouble& operator/=(FixedDouble other) {
+        raw_ = to_raw(saturating_div(as_signed(raw_), as_signed(other.raw_)));
+        return *this;
+    }
+
+    friend FixedDouble operator+(FixedDouble lhs, FixedDouble rhs) {
+        lhs += rhs;
+        return lhs;
+    }
+
+    friend FixedDouble operator-(FixedDouble lhs, FixedDouble rhs) {
+        lhs -= rhs;
+        return lhs;
+    }
+
+    FixedDouble operator/(int k) const {
+        if (k == 0) {
+            throw std::overflow_error("FixedDouble divide by zero");
+        }
+        const signed_storage_type lhs = as_signed(raw_);
+        // const signed_storage_type res =
+        //     saturate_to_signed(static_cast<wide_type>(lhs) / static_cast<wide_type>(k));
+        
+        const signed_storage_type res = lhs / static_cast<signed_storage_type>(k);
+
+        return FixedDouble::from_raw(to_raw(res));
+    }
+
+    FixedDouble operator*(int64_t k) const {
+        auto prod = as_signed(raw_) * k; // might overflow, just for testing 0.001
+        return from_raw(to_raw(prod >> 32));
+    }
+
+    friend FixedDouble operator*(FixedDouble lhs, FixedDouble rhs) {
+        lhs *= rhs;
+        return lhs;
+    }
+
+    friend FixedDouble operator/(FixedDouble lhs, FixedDouble rhs) {
+        lhs /= rhs;
+        return lhs;
+    }
+
+    // Comparisons use the signed interpretation of the raw bits.
+    friend bool operator==(FixedDouble lhs, FixedDouble rhs) { return lhs.raw_ == rhs.raw_; }
+    friend bool operator!=(FixedDouble lhs, FixedDouble rhs) { return !(lhs == rhs); }
+    friend bool operator<(FixedDouble lhs, FixedDouble rhs) { return as_signed(lhs.raw_) < as_signed(rhs.raw_); }
+    friend bool operator<=(FixedDouble lhs, FixedDouble rhs) { return as_signed(lhs.raw_) <= as_signed(rhs.raw_); }
+    friend bool operator>(FixedDouble lhs, FixedDouble rhs) { return rhs < lhs; }
+    friend bool operator>=(FixedDouble lhs, FixedDouble rhs) { return rhs <= lhs; }
+
+    // Convenience values and limits.
+    static constexpr FixedDouble zero() { return FixedDouble(); }
+    static constexpr FixedDouble one() { return from_int(1); }
+    static constexpr double max_value() { return static_cast<double>(kMaxRaw) * inv_scale; }
+    static constexpr double min_value() { return static_cast<double>(kMinRaw) * inv_scale; }
+
+private:
+    using wide_type = __int128;
+
+    static constexpr signed_storage_type kMaxRaw = std::numeric_limits<signed_storage_type>::max();
+    static constexpr signed_storage_type kMinRaw = std::numeric_limits<signed_storage_type>::min();
+
+    explicit constexpr FixedDouble(storage_type raw) : raw_(raw) {}
+
+    static constexpr signed_storage_type as_signed(storage_type raw) {
+        return std::bit_cast<signed_storage_type>(raw);
+    }
+
+    static constexpr storage_type to_raw(signed_storage_type value) {
+        return std::bit_cast<storage_type>(value);
+    }
+
+    static constexpr signed_storage_type saturate_to_signed(wide_type value) {
+        if (value > static_cast<wide_type>(kMaxRaw)) {
+            return kMaxRaw;
+        }
+        if (value < static_cast<wide_type>(kMinRaw)) {
+            return kMinRaw;
+        }
+        return static_cast<signed_storage_type>(value);
+    }
+
+    static constexpr signed_storage_type saturating_add(signed_storage_type a, signed_storage_type b) {
+        return saturate_to_signed(static_cast<wide_type>(a) + static_cast<wide_type>(b));
+    }
+
+    static constexpr signed_storage_type saturating_sub(signed_storage_type a, signed_storage_type b) {
+        return saturate_to_signed(static_cast<wide_type>(a) - static_cast<wide_type>(b));
+    }
+
+    static constexpr signed_storage_type saturating_mul(signed_storage_type a, signed_storage_type b) {
+        const wide_type prod = static_cast<wide_type>(a) * static_cast<wide_type>(b);
+        return saturate_to_signed(prod >> fractional_bits);
+    }
+
+    static signed_storage_type saturating_div(signed_storage_type num, signed_storage_type den) {
+        if (den == 0) {
+            throw std::overflow_error("FixedDouble divide by zero");
+        }
+        const wide_type numerator = static_cast<wide_type>(num) << fractional_bits;
+        return saturate_to_signed(numerator / static_cast<wide_type>(den));
+    }
+
+    storage_type raw_{0};
+};
+
+inline std::ostream& operator<<(std::ostream& os, const FixedDouble& v) {
+    return os << v.to_double();
+}
