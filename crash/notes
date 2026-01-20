@@ -1,0 +1,43 @@
+[  846.718912] a.out[4756]: segfault at c0 ip 000076a5e246b531 sp 00007fff693b8480 error 4 in libc.so.6[6b531,76a5e2428000+188000] likely on CPU 2 (core 0, socket 0)
+[  846.718928] Code: e5 41 57 49 89 ff 41 56 41 55 41 89 cd 41 54 49 89 d4 53 48 89 f3 48 81 ec f8 00 00 00 64 48 8b 04 25 28 00 00 00 48 89 45 c8 <8b> 87 c0 00 00 00 85 c0 0f 85 a9 00 00 00 c7 87 c0 00 00 00 ff ff
+
+
+#find the source code around offset 0x6b531 of libc.so.6
+#method 1
+gdb -q /lib/x86_64-linux-gnu/libc.so.6 \
+  -ex 'info symbol 0x6b531' \
+  -ex 'x/i 0x6b531' \
+  -ex quit
+
+#method2
+$ nm -D --numeric-sort /lib/x86_64-linux-gnu/libc.so.6 | awk '
+function h2d(s,  i,c,v,n){
+  n=0
+  for(i=1;i<=length(s);i++){
+    c=tolower(substr(s,i,1))
+    if(c>="0" && c<="9") v=c-"0"
+    else v = index("abcdef",c)+9
+    n = n*16 + v
+  }
+  return n
+}
+BEGIN{t=h2d("6b531")}
+{
+  a=h2d($1)
+  if(a<=t){p=$0; pa=a}
+}
+END{print "nearest <= 0x6b531:", p}
+'
+
+
+
+nm：偏“符号清单/链接视角”（有没有这个函数/符号、叫什么、地址多少）
+
+objdump：偏“二进制结构/反汇编视角”（代码长啥样、ELF 结构、动态段、重定位等）
+
+
+check if the debug symbol is loaded
+gdb -q /usr/lib/x86_64-linux-gnu/libc.so.6   -ex 'info line *0x6b531'   -ex quit
+Reading symbols from /usr/lib/x86_64-linux-gnu/libc.so.6...
+Reading symbols from /usr/lib/debug/.build-id/27/4eec488d230825a136fa9c4d85370fed7a0a5e.debug...
+Line 1525 of "./stdio-common/vfprintf-internal.c" starts at address 0x6b524 <__vfprintf_internal+36> and ends at 0x6b549 <__vfprintf_internal+73>.
